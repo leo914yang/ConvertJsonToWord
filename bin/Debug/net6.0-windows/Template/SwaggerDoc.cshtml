@@ -1,0 +1,170 @@
+﻿@using Swashbuckle.AspNetCore.Swagger;
+@using Newtonsoft.Json;
+@using ConvertJsonToWord.Model;
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Swagger API</title>
+    <style type='text/css'>
+
+        table, table td, table th {
+            border: 1px solid #000000;
+            border-collapse: collapse;
+        }
+
+        table {
+            table-layout: fixed;
+            word-break: break-all;
+        }
+
+        tr {
+            height: 20px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div style='width:1000px; margin: 0 auto'>
+        <h1 align="center">@Model.info.title</h1>
+        <h1 align="center">API文件 @Model.info.version</h1>
+		@if (Model.paths != null)
+		{
+			@foreach (var path in Model.paths)
+			{
+				@if (path.Value.methods != null)
+				{
+					foreach (var method in path.Value.methods)
+        			{	
+						var Operation = method.Value;
+						<h3>@Operation.summary</h3>
+						<table border='1' cellspacing='0' cellpadding='0' width='100%' style="table-layout: fixed; word-break: break-all;border: 1px solid #000000;border-collapse: collapse;">
+							<tr style="border: 1px solid #000000;border-collapse: collapse;">
+								<td style="border: 1px solid #000000;border-collapse: collapse; padding-left: 10px; background-color: rgb(64, 161, 232);" >Method</td>
+								<td colspan='5' style="padding-left: 10px;">@method.Key</td>
+							</tr>
+
+							<tr style="border: 1px solid #000000;border-collapse: collapse;">
+								<td style="border: 1px solid #000000;border-collapse: collapse; padding-left: 10px; background-color: rgb(64, 161, 232);">URL</td>
+								<td colspan='5' style="padding-left: 10px;">@path.Key</td>
+							</tr>
+									
+							<tr style="background-color: rgb(12, 116, 191);">
+								<td align='center' style="border: 1px solid #000000;border-collapse: collapse;" colspan='6'>Request Body</td>
+							</tr>	
+							@if (Operation.parameters != null)
+							{
+								var paramRowSize = Operation.parameters.Count + 1;
+								<tr style="background-color: rgb(64, 161, 232);">
+									<td style="padding-left: 10px; border: 1px solid #000000;border-collapse: collapse;" rowspan="@paramRowSize">Parameters</td>
+									<td align='center' style="border: 1px solid #000000;border-collapse: collapse;">Name</td>
+									<td align='center' style="border: 1px solid #000000;border-collapse: collapse;">Type</td>
+									<td align='center' style="border: 1px solid #000000;border-collapse: collapse;">Required</td>								<td align='center' style="border: 1px solid #000000;border-collapse: collapse;" colspan='2'>Description</td>
+								</tr>
+								@foreach (var param in Operation.parameters)
+								{
+									<tr align='center' style="border: 1px solid #000000;border-collapse: collapse;">
+										<td style="border: 1px solid #000000;border-collapse: collapse;">@param.name</td>
+										<td style="border: 1px solid #000000;border-collapse: collapse;">@param.pin</td>
+										<td style="border: 1px solid #000000;border-collapse: collapse;">@param.require</td>
+										<td style="border: 1px solid #000000;border-collapse: collapse;" colspan='2'>@param.description</td>
+									</tr>
+								}
+								<tr>
+									<td style="border: 1px solid #000000; border-collapse: collapse;" colspan='6'>
+										<pre>@{
+												var jsonBuilder = new System.Text.StringBuilder();
+												jsonBuilder.AppendLine("{");
+
+												@foreach (var param in Operation.parameters)
+												{
+													jsonBuilder.AppendLine($"  \"{param.name}\": <{param.description ?? "N/A"}>,");
+												}
+												
+												@if (Operation.parameters.Any())
+												{
+													jsonBuilder.Length -= 3;
+													jsonBuilder.AppendLine();
+												}
+
+												jsonBuilder.AppendLine("}");
+
+												@jsonBuilder.ToString()
+											}
+										</pre>
+									</td>
+								</tr>
+							}
+							else
+							{
+								<tr>
+									<td style="padding-left: 10px; border: 1px solid #000000;border-collapse: collapse;" colspan='6'><pre>N/A</pre></td>
+								</tr>
+							}
+									
+							@if (Operation.responses != null)
+							{
+								var reponseRowSize = Operation.responses.Count + 1;
+								<tr style="background-color: rgb(12, 116, 191);">
+									<td align='center' style="border: 1px solid #000000;border-collapse: collapse;" colspan='6'>Response Body</td>
+								</tr>
+								<tr style="background-color: rgb(64, 161, 232);">
+									<td style="padding-left: 10px; border: 1px solid #000000;border-collapse: collapse;" rowspan="@reponseRowSize">Status</td>
+									<td align='center' style="border: 1px solid #000000;border-collapse: collapse;">Code</td>
+									<td align='center' style="border: 1px solid #000000;border-collapse: collapse;" colspan='4'>Description</td>
+								</tr>
+										
+								@foreach (var response in Operation.responses)
+								{
+											
+									<tr align='center' style="border: 1px solid #000000;border-collapse: collapse;">
+										<td style="border: 1px solid #000000;border-collapse: collapse;">@response.Key</td>
+										<td style="border: 1px solid #000000;border-collapse: collapse;" colspan='4'>@response.Value.description</td>
+											
+									</tr>
+
+									if (response.Value.content != null)
+									{
+										var firstContent = response.Value.content.Values.ElementAt(0);
+										if(firstContent.schema.Items.result != null)
+										{
+											var paramRowSize = firstContent.schema.Items.properties.Count + 1;
+											<tr style="background-color: rgb(64, 161, 232);">
+												<td style="padding-left: 10px; border: 1px solid #000000;border-collapse: collapse;" rowspan="@paramRowSize">Parameters</td>
+												<td align='center' style="border: 1px solid #000000;border-collapse: collapse;">Name</td>
+												<td align='center' style="border: 1px solid #000000;border-collapse: collapse;">Type</td>								
+												<td align='center' style="border: 1px solid #000000;border-collapse: collapse;" colspan='3'>Description</td>
+											</tr>
+											foreach(var property in firstContent.schema.Items.properties)
+											{
+												<tr align='center' style="border: 1px solid #000000;border-collapse: collapse;">
+													<td style="border: 1px solid #000000;border-collapse: collapse;">@property.Key</td>
+													<td style="border: 1px solid #000000;border-collapse: collapse;">@property.Value.type</td>
+													<td style="border: 1px solid #000000;border-collapse: collapse;" colspan='3'>@property.Value.description</td>
+												</tr>
+											}
+
+										
+											var jsonResult = firstContent.schema.Items.result;
+											<tr>
+												<td style="border: 1px solid #000000;border-collapse: collapse;" colspan='6'><pre>@jsonResult</pre></td>
+											</tr>	
+										}
+									}
+									else 
+									{
+										<tr>
+											<td style="padding-left: 10px; border: 1px solid #000000;border-collapse: collapse;" colspan='6'><pre>N/A</pre></td>
+										</tr>
+									}
+								}	
+							}
+						</table>
+								
+					}
+				}
+			}
+		}
+    </div>
+</body>
+</html>
