@@ -2,6 +2,7 @@ using Newtonsoft.Json;
 using ConvertJsonToWord.Helper;
 using ConvertJsonToWord.Model;
 using ConvertJsonToWord.Utils;
+using System.Reflection;
 
 namespace ConvertJsonToWord
 {
@@ -179,8 +180,10 @@ namespace ConvertJsonToWord
 
             var model = JsonConvert.DeserializeObject<MyOpenApiObject>(refExtendedString);
             processObject.ProcessMethod(model);
-            processObject.ProcessFormat(model);
-            
+            //processObject.ProcessFormat(model);
+            processObject.showStructure(model, "Items");
+               
+
             // 5. 自定義物件轉換成OpenApiDocument
             var html = "";
             // 6. 抓取模板並寫入資料
@@ -200,7 +203,5 @@ namespace ConvertJsonToWord
         {
 
         }
-
-
     }
 }

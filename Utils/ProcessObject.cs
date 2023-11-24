@@ -1,49 +1,163 @@
 ﻿using ConvertJsonToWord.Model;
+using DocumentFormat.OpenXml.Vml.Office;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using System.Collections;
+using System.Data;
+using System.Diagnostics;
+using System.Reflection;
 using static ConvertJsonToWord.Model.MyOpenApiObject;
 
 namespace ConvertJsonToWord.Utils
 {
     public class ProcessObject
     {
-        // 指定撈取Items底下的properties
-        // 再將資料按照格式轉換成json
-        public void ProcessFormat(MyOpenApiObject myOpenApiObject)
+        //public void showStructure(object obj, int indentLevel = 0)
+        //{
+        //    Type type = obj?.GetType();
+
+        //    if (type != null && type.GetProperties().Any())
+        //    {
+        //        foreach (var property in type.GetProperties())
+        //        {
+        //            // 取得屬性值
+        //            var value = property?.GetValue(obj);
+        //            var newIndentLevel = indentLevel + 1;
+        //            // 如果屬性的類型是自定義類型，遞迴呼叫 showStructure
+        //            if (property?.PropertyType.Namespace != null && property.PropertyType.Namespace != "System")
+        //            {
+        //                if (IsDictionaryType(property.PropertyType))
+        //                {
+        //                    // 如果是 Dictionary 類型，印出 key，然後遞迴處理 value
+        //                    var dictionary = value as IDictionary;
+        //                    if (dictionary != null)
+        //                    {
+        //                        foreach (DictionaryEntry entry in dictionary)
+        //                        {
+        //                            Debug.WriteLine($"{new string('\t', indentLevel)}屬性名稱: {property.Name}");
+        //                            Debug.WriteLine($"{new string('\t', indentLevel)}Dictionary Key: {entry.Key}");
+        //                            if (entry.Value != null)
+        //                            {
+        //                                showStructure(entry.Value, newIndentLevel);
+        //                            }
+
+        //                        }
+        //                    }
+        //                }
+        //                else if (IsListType(property.PropertyType))
+        //                {
+        //                    // 如果是 List 類型，遞迴處理每個元素
+        //                    var list = value as IList;
+        //                    if (list != null)
+        //                    {
+        //                        foreach (var listItem in list)
+        //                        {
+        //                            Debug.WriteLine($"{new string('\t', indentLevel)}屬性名稱: {property.Name}");
+        //                            showStructure(listItem, newIndentLevel);
+        //                        }
+        //                    }
+        //                }
+        //                else
+        //                {
+        //                    Debug.WriteLine($"{new string('\t', indentLevel)}屬性名稱: {property.Name}");
+        //                    showStructure(value, newIndentLevel);
+        //                }
+        //            }
+        //        }
+        //    }
+
+        //}
+
+        private bool IsDictionaryType(Type type)
         {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Dictionary<,>);
+        }
+
+        private bool IsListType(Type type)
+        {
+            return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>);
+        }
+
+
+        public void showStructure(object obj, string target, int indentLevel = 0)
+        {
+            Type type = obj?.GetType();
             var trans = new Transform();
-            foreach (var path in myOpenApiObject.paths)
+            if (type != null && type.GetProperties().Any())
             {
-                foreach (var method in path.Value.methods)
+                foreach (var property in type.GetProperties())
                 {
-                    
-                    foreach (var response in method.Value.responses)
+                    // 取得屬性值
+                    var value = property?.GetValue(obj);
+                    var newIndentLevel = indentLevel + 1;
+                    // 如果屬性的類型是自定義類型，遞迴呼叫 showStructure
+                    if (property?.PropertyType.Namespace != null && property.PropertyType.Namespace != "System")
                     {
-                        if (response.Value.content != null)
+                        if (IsDictionaryType(property.PropertyType))
                         {
-                            foreach (var con in response.Value.content)
+                            // 如果是 Dictionary 類型，印出 key，然後遞迴處理 value
+                            var dictionary = value as IDictionary;
+                            if (dictionary != null)
                             {
-                                var schema = con.Value.schema;
-
-                                if (schema != null && schema.Items != null && schema.Items.properties != null)
+                                foreach (DictionaryEntry entry in dictionary)
                                 {
-                                    var properties = schema.Items.properties;
-
-                                    var responseJson = JsonConvert.SerializeObject(properties, Formatting.Indented);
-                                    var jsonResponse = JsonConvert.DeserializeObject<JObject>(responseJson);
+                                    Debug.WriteLine($"{new string('\t', indentLevel)}屬性名稱: {property.Name}");
+                                    Debug.WriteLine($"{new string('\t', indentLevel)}Dictionary Key: {entry.Key}");
                                     
-                                    string jsonResponseResult = string.Empty;
-                                    var finalResponseResult = trans.TransformJson(jsonResponse, jsonResponseResult);
-                                    schema.Items.result = "{\n" + finalResponseResult.Substring(0, finalResponseResult.Length - 2) + "\n}";
+                                    if (entry.Value != null)
+                                    {
+                                        showStructure(entry.Value, target, newIndentLevel);
+                                    }
 
                                 }
                             }
                         }
-                        
+                        else if (IsListType(property.PropertyType))
+                        {
+                            // 如果是 List 類型，遞迴處理每個元素
+                            var list = value as IList;
+
+                            if (list != null)
+                            {
+                                foreach (var listItem in list)
+                                {
+                                    Debug.WriteLine($"{new string('\t', indentLevel)}屬性名稱: {property.Name}");
+                                    showStructure(listItem, target, newIndentLevel);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            if (property?.Name.Equals(target) == true)
+                            {
+                                // 建立Items物件 藉此拿到Items的屬性
+                                var items = property.GetValue(obj) as Items;
+                                if (items != null)
+                                {
+                                    // 取得Items底下的properties
+                                    var properties = items.properties;
+
+                                    var responseJson = JsonConvert.SerializeObject(properties, Formatting.Indented);
+                                    var jsonResponse = JsonConvert.DeserializeObject<JObject>(responseJson);
+
+                                    string jsonResponseResult = string.Empty;
+                                    var finalResponseResult = trans.TransformJson(jsonResponse, jsonResponseResult);
+
+                                    // 資料寫入result
+                                    items.result = "{\n" + finalResponseResult.Substring(0, finalResponseResult.Length - 2) + "\n}";
+                                }
+                                
+                            }
+                            Debug.WriteLine($"{new string('\t', indentLevel)}屬性名稱: {property.Name}");
+                            showStructure(value, target, newIndentLevel);
+                        }
                     }
                 }
             }
+
         }
+
+        
         // 處理api的methods，理論上一次只會有一種method
         public void ProcessMethod(MyOpenApiObject myOpenApiObject)
         {
